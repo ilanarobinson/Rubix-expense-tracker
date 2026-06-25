@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rubix Travel Expense Tracker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --rubix-blue: #0083CA;
+    --rubix-dark: #2D3742;
+    --rubix-mid: #7F848B;
+    --rubix-light: #D8DCDB;
+    --surface-0: #f5f5f4;
+    --surface-1: #f0efee;
+    --surface-2: #ffffff;
+    --text-primary: #1a1a18;
+    --text-secondary: #5f5e5a;
+    --text-muted: #888780;
+    --border: rgba(0,0,0,0.10);
+    --border-strong: rgba(0,0,0,0.18);
+    --radius: 8px;
+    --bg-success: #eaf3de;
+    --text-success: #3b6d11;
+    --bg-warning: #faeeda;
+    --text-warning: #854f0b;
+    --bg-danger: #fcebeb;
+    --text-danger: #a32d2d;
+    --bg-accent: #e6f1fb;
+    --text-accent: #185fa5;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-0: #1c1c1a;
+      --surface-1: #232321;
+      --surface-2: #2c2c2a;
+      --text-primary: #f0efee;
+      --text-secondary: #b4b2a9;
+      --text-muted: #888780;
+      --border: rgba(255,255,255,0.10);
+      --border-strong: rgba(255,255,255,0.18);
+      --bg-success: #173404;
+      --text-success: #c0dd97;
+      --bg-warning: #412402;
+      --text-warning: #fac775;
+      --bg-danger: #501313;
+      --text-danger: #f09595;
+      --bg-accent: #042c53;
+      --text-accent: #85b7eb;
+    }
+  }
+
+  body {
+    font-family: 'Aptos', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  .page { max-width: 760px; margin: 0 auto; }
+
+  .card {
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    background: var(--rubix-dark);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header svg { width: 100px; height: auto; flex-shrink: 0; }
+  .header-title { color: #fff; font-size: 15px; font-weight: 500; margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .header-title svg { width: 18px; height: 18px; }
+
+  /* API key bar */
+  .api-bar {
+    background: var(--bg-accent);
+    border-bottom: 0.5px solid var(--border);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-accent);
+  }
+  .api-bar input {
+    flex: 1;
+    font-size: 13px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: 5px 10px;
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-family: monospace;
+  }
+  .api-bar input:focus { outline: none; border-color: var(--rubix-blue); }
+
+  /* Trip row */
+  .trip-row {
+    padding: 14px 24px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .trip-input {
+    flex: 1;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 7px 10px;
+    font-size: 13px;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-family: inherit;
+  }
+  .trip-input:focus { outline: none; border-color: var(--rubix-blue); }
+  .gst-label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+  .gst-select {
+    font-size: 13px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-family: inherit;
+  }
+  .gst-select:focus { outline: none; border-color: var(--rubix-blue); }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 0.5px solid var(--border);
+    margin: 12px 24px 0;
+  }
+  .tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab.active { color: var(--rubix-blue); border-bottom-color: var(--rubix-blue); font-weight: 500; }
+  .tab:hover:not(.active) { color: var(--text-primary); }
+
+  /* Body */
+  .panel { padding: 20px 24px; }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 12px;
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface-1);
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    background: var(--bg-accent);
+    border-color: var(--rubix-blue);
+  }
+  .drop-zone-icon { font-size: 32px; margin-bottom: 8px; color: var(--text-muted); }
+  .drop-zone p { font-size: 13px; color: var(--text-secondary); margin: 4px 0; }
+  .drop-zone span { color: var(--rubix-blue); font-weight: 500; }
+  #file-input { display: none; }
+
+  /* Receipt list */
+  .receipts-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+
+  .receipt-item {
+    background: var(--surface-1);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    gap: 12px;
+    align-items: start;
+  }
+  .thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--surface-0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 0.5px solid var(--border);
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  .receipt-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px 12px;
+  }
+  .field-group { display: flex; flex-direction: column; gap: 3px; }
+  .field-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  .field-input {
+    font-size: 13px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 5px 8px;
+    background: var(--surface-2);
+    color: var(--text-primary);
+    width: 100%;
+    font-family: inherit;
+  }
+  .field-input:focus { outline: none; border-color: var(--rubix-blue); }
+  .field-readonly {
+    font-size: 13px;
+    padding: 5px 8px;
+    color: var(--text-secondary);
+    background: var(--surface-0);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .receipt-status { margin-top: 8px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: var(--radius);
+  }
+  .badge.analyzing { background: var(--bg-warning); color: var(--text-warning); }
+  .badge.done { background: var(--bg-success); color: var(--text-success); }
+  .badge.error { background: var(--bg-danger); color: var(--text-danger); }
+
+  .remove-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 4px;
+    border-radius: 6px;
+    line-height: 1;
+    font-size: 16px;
+  }
+  .remove-btn:hover { color: var(--text-danger); background: var(--bg-danger); }
+
+  /* Summary bar */
+  .summary-bar {
+    background: var(--surface-1);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .summary-totals { display: flex; gap: 24px; flex-wrap: wrap; }
+  .summary-item { display: flex; flex-direction: column; gap: 2px; }
+  .summary-label { font-size: 11px; color: var(--text-muted); }
+  .summary-value { font-size: 15px; font-weight: 500; }
+  .actions { display: flex; gap: 8px; }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 0.5px solid var(--border-strong);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface-1); }
+  .btn:active { transform: scale(0.98); }
+  .btn.primary { background: var(--rubix-blue); color: #fff; border-color: var(--rubix-blue); }
+  .btn.primary:hover { background: #006fa8; border-color: #006fa8; }
+  .btn.danger { background: var(--bg-danger); color: var(--text-danger); border-color: transparent; }
+
+  /* Email panel */
+  .email-panel { display: flex; flex-direction: column; gap: 14px; }
+  .email-field { display: flex; flex-direction: column; gap: 5px; }
+  .email-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+  .email-input {
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    font-size: 13px;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-family: inherit;
+  }
+  .email-input:focus { outline: none; border-color: var(--rubix-blue); }
+  .email-body-area {
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    font-size: 12px;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-family: 'Consolas', 'Courier New', monospace;
+    line-height: 1.65;
+    min-height: 200px;
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+  .attachments-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .att-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    background: var(--surface-1);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .empty-state-icon { font-size: 36px; margin-bottom: 10px; }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 560px) {
+    .receipt-fields { grid-template-columns: 1fr 1fr; }
+    .summary-totals { gap: 14px; }
+    .header-title { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="card">
+
+    <!-- Header -->
+    <div class="header">
+      <svg viewBox="0 0 626.26 181.16" xmlns="http://www.w3.org/2000/svg" aria-label="Rubix">
+        <path fill="#fff" d="M29.54,178.88c15.9,0,28.79-12.89,28.79-28.79c0-15.9-12.89-28.79-28.79-28.79c-15.9,0-28.79,12.89-28.79,28.79C0.75,165.99,13.64,178.88,29.54,178.88z"/>
+        <path fill="#fff" d="M99.54,120.92c18.19-11.39,30.33-31.54,30.33-54.57c0-35.58-28.87-64.43-64.49-64.43S0.9,30.77,0.9,66.35h64.48v48.21v16.22v46.66h88.24C144.86,151.54,124.91,130.83,99.54,120.92z"/>
+        <path fill="#fff" d="M279.81,102.18c0-20.98-14.65-35.64-39.47-35.64h-51.62v111.07h26.31v-38.47h19.15l19.48,38.47h30.81l-23.98-43.63C271.31,128.66,279.81,118.5,279.81,102.18z M252.66,104.18c0,8.49-5.83,13.66-12.99,13.66h-24.65V90.36h24.65C246.67,90.36,252.66,95.69,252.66,104.18z"/>
+        <path fill="#fff" d="M374.56,88.46v88.92h-25.48v-9.99c-6.83,7.49-16.49,11.99-26.48,11.99c-20.98,0-30.14-14.82-30.14-31.97V88.46h25.48v52.79c0,8.66,3,15.49,14.15,15.49c8.99,0,16.99-6.16,16.99-17.65V88.46H374.56z"/>
+        <path fill="#fff" d="M483.07,133.15c0-26.48-15.49-46.46-40.46-46.46c-10.82,0-19.98,4-27.31,12.16V58.72h-25.48v118.9h25.48v-10.16c7.33,7.99,16.49,12.16,27.31,12.16C467.59,179.61,483.07,159.46,483.07,133.15z M456.26,133.32c0,13.32-6.49,24.31-20.15,24.31c-13.82,0-20.82-10.82-20.82-24.31c0-13.49,6.99-24.65,20.82-24.65C449.77,108.67,456.26,120,456.26,133.32z"/>
+        <polygon fill="#fff" points="494.12,177.61 494.12,88.69 519.6,88.69 519.6,177.61 494.12,177.61"/>
+        <path fill="#fff" d="M593.56,177.61c-5.83-9.99-11.82-19.98-17.82-29.97c-5.83,9.99-11.82,19.98-17.65,29.97h-30.64c10.32-15.49,20.82-30.81,31.31-46.29c-9.49-14.15-18.98-28.31-28.64-42.63h30.14c5.33,8.99,10.65,18.15,15.99,27.14c5.16-8.99,10.49-18.15,15.65-27.14h29.97c-9.66,14.32-19.32,28.48-28.81,42.8c10.32,15.32,20.98,30.81,31.31,46.13H593.56z"/>
+        <path fill="#fff" d="M506.86,79.47c8.69,0,15.73-7.04,15.73-15.73c0-8.69-7.04-15.73-15.73-15.73c-8.69,0-15.73,7.04-15.73,15.73C491.12,72.42,498.17,79.47,506.86,79.47z"/>
+      </svg>
+      <div class="header-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Travel expense tracker
+      </div>
+    </div>
+
+    <!-- API key -->
+    <div class="api-bar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><line x1="19" y1="4" x2="10.58" y2="12.42"/><line x1="18" y1="5" x2="20" y2="7"/><line x1="15" y1="8" x2="17" y2="10"/></svg>
+      <span>Anthropic API key:</span>
+      <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" />
+      <span id="key-status" style="font-size:11px;"></span>
+    </div>
+
+    <!-- Trip + GST -->
+    <div class="trip-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);flex-shrink:0;" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      <input class="trip-input" id="trip-name" placeholder="Trip name (e.g. Queenstown site visit, June 2026)" />
+      <span class="gst-label">GST:</span>
+      <select class="gst-select" id="gst-rate" onchange="renderReceipts()">
+        <option value="0.15" selected>15% (NZ)</option>
+        <option value="0.10">10% (AU)</option>
+        <option value="0">None</option>
+      </select>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('capture')" id="tab-capture">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Capture receipts
+      </button>
+      <button class="tab" onclick="switchTab('email')" id="tab-email">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Email to finance
+      </button>
+    </div>
+
+    <!-- Capture panel -->
+    <div class="panel" id="panel-capture">
+      <div class="drop-zone" id="drop-zone"
+        onclick="document.getElementById('file-input').click()"
+        ondragover="handleDrag(event,true)"
+        ondragleave="handleDrag(event,false)"
+        ondrop="handleDrop(event)"
+        role="button"
+        tabindex="0"
+        aria-label="Upload receipt photos"
+        onkeydown="if(event.key==='Enter'||event.key===' ')document.getElementById('file-input').click()">
+        <div class="drop-zone-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <p>Drop receipt photos here, or <span>browse to upload</span></p>
+        <p style="font-size:11px;margin-top:6px;">JPG, PNG, HEIC supported &bull; Multiple files at once</p>
+      </div>
+      <input type="file" id="file-input" accept="image/*" multiple onchange="handleFiles(event)" />
+      <div class="receipts-list" id="receipts-list"></div>
+      <div id="summary-bar" style="display:none;">
+        <div class="summary-bar">
+          <div class="summary-totals">
+            <div class="summary-item">
+              <span class="summary-label">Total (incl. GST)</span>
+              <span class="summary-value" id="total-display">$0.00</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">GST content</span>
+              <span class="summary-value" id="gst-display">$0.00</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Ex-GST</span>
+              <span class="summary-value" id="exgst-display">$0.00</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Receipts</span>
+              <span class="summary-value" id="count-display">0</span>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn danger" onclick="clearAll()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              Clear all
+            </button>
+            <button class="btn primary" onclick="switchTab('email')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Build email
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email panel -->
+    <div class="panel" id="panel-email" style="display:none;">
+      <div id="email-empty" class="empty-state" style="display:none;">
+        <div class="empty-state-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        No receipts captured yet. Add receipts in the Capture tab first.
+      </div>
+      <div class="email-panel" id="email-form">
+        <div class="email-field">
+          <label class="email-label" for="to-field">To</label>
+          <input class="email-input" id="to-field" placeholder="finance@rubix.nz" type="email" />
+        </div>
+        <div class="email-field">
+          <label class="email-label" for="subject-field">Subject</label>
+          <input class="email-input" id="subject-field" value="Travel expense receipts" />
+        </div>
+        <div class="email-field">
+          <label class="email-label">Body</label>
+          <div class="email-body-area" id="email-body-preview"></div>
+        </div>
+        <div class="email-field">
+          <label class="email-label">Attachments (add manually to your email)</label>
+          <div class="attachments-list" id="attachments-list"></div>
+          <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">Drag receipt photos from your device into your email client after opening.</p>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+          <button class="btn" onclick="copyEmail()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy body
+          </button>
+          <button class="btn primary" onclick="openOutlook()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Open in Outlook &#8599;
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">Rubix Travel Expense Tracker &bull; Powered by Claude AI &bull; Receipt data stays in your browser</div>
+</div>
+
+<script>
+const CLAUDE_API = "https://api.anthropic.com/v1/messages";
+let receipts = [];
+
+function apiKey() { return document.getElementById('api-key').value.trim(); }
+function gstRate() { return parseFloat(document.getElementById('gst-rate').value); }
+function calcGst(amt) { const r = gstRate(); return r > 0 ? amt * r / (1 + r) : 0; }
+function calcExGst(amt) { const r = gstRate(); return r > 0 ? amt / (1 + r) : amt; }
+
+function switchTab(name) {
+  ['capture','email'].forEach(t => {
+    document.getElementById('panel-'+t).style.display = t===name ? '' : 'none';
+    document.getElementById('tab-'+t).className = 'tab'+(t===name?' active':'');
+  });
+  if (name==='email') buildEmailPreview();
+}
+
+function handleDrag(e, over) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.toggle('drag-over', over);
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  processFiles(Array.from(e.dataTransfer.files));
+}
+function handleFiles(e) { processFiles(Array.from(e.target.files)); e.target.value=''; }
+
+function processFiles(files) {
+  files.filter(f => f.type.startsWith('image/')).forEach(file => {
+    const id = Date.now() + Math.random();
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      receipts.push({
+        id, file, name: file.name,
+        dataUrl,
+        base64: dataUrl.split(',')[1],
+        mime: file.type,
+        vendor: '', amount: '', date: '', category: 'Other',
+        status: 'analyzing'
+      });
+      renderReceipts();
+      if (apiKey()) {
+        analyzeReceipt(id);
+      } else {
+        const r = receipts.find(x => x.id===id);
+        if (r) { r.status = 'no-key'; renderReceipts(); }
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function analyzeReceipt(id) {
+  const r = receipts.find(x => x.id===id);
+  if (!r) return;
+  try {
+    const res = await fetch(CLAUDE_API, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey(),
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 500,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: r.mime, data: r.base64 } },
+            { type: 'text', text: 'Extract from this receipt: vendor name, total amount paid (number only, include GST if present), date (DD/MM/YYYY), and best category from: Accommodation, Meals, Transport, Parking, Other. Respond ONLY with valid JSON, no explanation: {"vendor":"","amount":"","date":"","category":""}' }
+          ]
+        }]
+      })
+    });
+    if (!res.ok) throw new Error('API error '+res.status);
+    const data = await res.json();
+    const text = data.content?.find(b => b.type==='text')?.text || '{}';
+    let parsed = {};
+    try { parsed = JSON.parse(text.replace(/```json|```/g,'').trim()); } catch(e) {}
+    const rec = receipts.find(x => x.id===id);
+    if (rec) {
+      rec.vendor = parsed.vendor || '';
+      rec.amount = parsed.amount || '';
+      rec.date = parsed.date || '';
+      rec.category = parsed.category || 'Other';
+      rec.status = 'done';
+      renderReceipts();
+    }
+  } catch(e) {
+    const rec = receipts.find(x => x.id===id);
+    if (rec) { rec.status = 'error'; renderReceipts(); }
+  }
+}
+
+function reanalyze(id) {
+  const r = receipts.find(x => x.id===id);
+  if (!r || !apiKey()) return;
+  r.status = 'analyzing';
+  renderReceipts();
+  analyzeReceipt(id);
+}
+
+function renderReceipts() {
+  const list = document.getElementById('receipts-list');
+  const bar = document.getElementById('summary-bar');
+  if (!receipts.length) { list.innerHTML=''; bar.style.display='none'; return; }
+  bar.style.display = '';
+  list.innerHTML = receipts.map(r => {
+    const amt = parseFloat(r.amount) || 0;
+    const gst = calcGst(amt);
+    const exGst = calcExGst(amt);
+    const statusBadge = r.status==='analyzing'
+      ? `<span class="badge analyzing"><span class="spin">&#8635;</span> Reading receipt...</span>`
+      : r.status==='error'
+      ? `<span class="badge error">&#9888; Could not read &ndash; <a href="#" onclick="reanalyze('${r.id}');return false;" style="color:inherit;">retry</a></span>`
+      : r.status==='no-key'
+      ? `<span class="badge analyzing">&#128273; Add API key to auto-read</span>`
+      : `<span class="badge done">&#10003; Ready</span>`;
+    return `
+    <div class="receipt-item">
+      <div class="thumb">${r.dataUrl ? `<img src="${r.dataUrl}" alt="receipt thumbnail" />` : ''}</div>
+      <div>
+        <div class="receipt-fields">
+          <div class="field-group">
+            <span class="field-label">Vendor</span>
+            <input class="field-input" value="${esc(r.vendor)}" placeholder="Vendor name" onchange="updateField('${r.id}','vendor',this.value)" />
+          </div>
+          <div class="field-group">
+            <span class="field-label">Total (incl. GST)</span>
+            <input class="field-input" value="${esc(r.amount)}" placeholder="0.00" onchange="updateField('${r.id}','amount',this.value)" />
+          </div>
+          <div class="field-group">
+            <span class="field-label">Date</span>
+            <input class="field-input" value="${esc(r.date)}" placeholder="DD/MM/YYYY" onchange="updateField('${r.id}','date',this.value)" />
+          </div>
+          <div class="field-group">
+            <span class="field-label">Category</span>
+            <select class="field-input" onchange="updateField('${r.id}','category',this.value)">
+              ${['Accommodation','Meals','Transport','Parking','Other'].map(c=>`<option${r.category===c?' selected':''}>${c}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field-group">
+            <span class="field-label">GST content</span>
+            <div class="field-readonly">$${gst.toFixed(2)}</div>
+          </div>
+          <div class="field-group">
+            <span class="field-label">Ex-GST</span>
+            <div class="field-readonly">$${exGst.toFixed(2)}</div>
+          </div>
+        </div>
+        <div class="receipt-status">${statusBadge}</div>
+      </div>
+      <button class="remove-btn" onclick="removeReceipt('${r.id}')" aria-label="Remove receipt" title="Remove">&times;</button>
+    </div>`;
+  }).join('');
+  updateSummary();
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function updateField(id, field, val) {
+  const r = receipts.find(x => x.id==id);
+  if (r) { r[field] = val; updateSummary(); }
+}
+function removeReceipt(id) { receipts = receipts.filter(x => x.id!=id); renderReceipts(); }
+function clearAll() { if (confirm('Clear all receipts?')) { receipts=[]; renderReceipts(); } }
+
+function updateSummary() {
+  const total = receipts.reduce((s,r) => s+(parseFloat(r.amount)||0), 0);
+  const gst = receipts.reduce((s,r) => s+calcGst(parseFloat(r.amount)||0), 0);
+  const exGst = receipts.reduce((s,r) => s+calcExGst(parseFloat(r.amount)||0), 0);
+  document.getElementById('total-display').textContent = '$'+total.toFixed(2);
+  document.getElementById('gst-display').textContent = '$'+gst.toFixed(2);
+  document.getElementById('exgst-display').textContent = '$'+exGst.toFixed(2);
+  document.getElementById('count-display').textContent = receipts.length;
+}
+
+function buildEmailPreview() {
+  const tripName = document.getElementById('trip-name').value || 'work trip';
+  const subj = document.getElementById('subject-field');
+  if (subj.value === 'Travel expense receipts') subj.value = 'Travel expenses: ' + tripName;
+  if (!receipts.length) {
+    document.getElementById('email-empty').style.display = '';
+    document.getElementById('email-form').style.display = 'none';
+    return;
+  }
+  document.getElementById('email-empty').style.display = 'none';
+  document.getElementById('email-form').style.display = '';
+
+  const rate = gstRate();
+  const rateLabel = rate===0.15 ? '15%' : rate===0.10 ? '10%' : '0% (zero-rated)';
+  const total = receipts.reduce((s,r) => s+(parseFloat(r.amount)||0), 0);
+  const totalGst = receipts.reduce((s,r) => s+calcGst(parseFloat(r.amount)||0), 0);
+  const totalEx = receipts.reduce((s,r) => s+calcExGst(parseFloat(r.amount)||0), 0);
+
+  const pad = (s,n) => String(s).padEnd(n);
+  const rpad = (s,n) => String(s).padStart(n);
+  const div = '-'.repeat(74);
+
+  const rows = receipts.map(r => {
+    const amt = parseFloat(r.amount)||0;
+    const gst = calcGst(amt);
+    const ex = calcExGst(amt);
+    return `  ${pad(r.date||'–',12)} ${pad(r.vendor||'–',22)} ${pad(r.category,15)} ${rpad('$'+amt.toFixed(2),8)}  ${rpad('$'+gst.toFixed(2),8)}  ${rpad('$'+ex.toFixed(2),8)}`;
+  }).join('\n');
+
+  const body =
+`Hi,
+
+Please find attached receipts for my recent trip: ${tripName}.
+
+Expense summary (GST rate: ${rateLabel}):
+${div}
+  ${'Date'.padEnd(12)} ${'Vendor'.padEnd(22)} ${'Category'.padEnd(15)} ${'Total'.padStart(8)}  ${'GST'.padStart(8)}  ${'Ex-GST'.padStart(8)}
+${div}
+${rows}
+${div}
+  ${'Totals'.padEnd(51)} ${rpad('$'+total.toFixed(2),8)}  ${rpad('$'+totalGst.toFixed(2),8)}  ${rpad('$'+totalEx.toFixed(2),8)}
+
+Receipt photos are attached. Please let me know if you need any further details.
+
+Thanks`;
+
+  document.getElementById('email-body-preview').textContent = body;
+  document.getElementById('attachments-list').innerHTML = receipts.map((r,i) =>
+    `<div class="att-chip">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      ${esc(r.name || ('Receipt '+(i+1)+'.jpg'))}
+    </div>`
+  ).join('');
+}
+
+function copyEmail() {
+  const body = document.getElementById('email-body-preview').textContent;
+  navigator.clipboard.writeText(body).then(() => {
+    const btn = event.target.closest('button');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '&#10003; Copied';
+    setTimeout(() => btn.innerHTML = orig, 2000);
+  }).catch(() => alert('Copy failed. Please select the text manually.'));
+}
+
+function openOutlook() {
+  const to = document.getElementById('to-field').value;
+  const subject = encodeURIComponent(document.getElementById('subject-field').value);
+  const body = encodeURIComponent(document.getElementById('email-body-preview').textContent);
+  window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+}
+</script>
+</body>
+</html>
